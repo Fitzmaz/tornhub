@@ -3,17 +3,17 @@ import storage from './base/storage';
 import { createContainer, insertContainer } from './base/dom';
 import { timeFormatter, startCountDown } from './base/timer';
 
+const DidFetchAPIKey = "DidFetchAPIKey";
+const DrugCDTimeKey = "DrugCDKey";
+const MedCDTimeKey = "MedCDKey";
+const BoosterCDTimeKey = "BoosterCDKey";
+
 function updateCooldowns(currentTime, handler) {
-  const DrugCDTimeKey = "DrugCDKey";
-  const MedCDTimeKey = "MedCDKey";
-  const BoosterCDTimeKey = "BoosterCDKey";
+  let didFetchAPI = storage.get(DidFetchAPIKey);
   let drugCDTime = storage.get(DrugCDTimeKey);
   let medCDTime = storage.get(MedCDTimeKey);
   let boosterCDTime = storage.get(BoosterCDTimeKey);
-  let drugCDExpired = !drugCDTime || drugCDTime - currentTime < 0;
-  let medCDExpired = !medCDTime || medCDTime - currentTime < 0;
-  let boosterCDExpired = !boosterCDTime || boosterCDTime - currentTime < 0;
-  if (!drugCDExpired && !medCDExpired && !boosterCDExpired) {
+  if (didFetchAPI) {
     handler(drugCDTime, medCDTime, boosterCDTime);
     return;
   }
@@ -22,18 +22,19 @@ function updateCooldowns(currentTime, handler) {
       let { cooldowns } = data;
       let { drug, medical, booster } = cooldowns;
       //TODO: 没有cd时
-      if (drugCDExpired && drug) {
+      if (drug) {
         drugCDTime = currentTime + drug * 1000;
         storage.set(DrugCDTimeKey, drugCDTime);
       }
-      if (medCDExpired && medical) {
+      if (medical) {
         medCDTime = currentTime + medical * 1000;
         storage.set(MedCDTimeKey, medCDTime);
       }
-      if (boosterCDExpired && booster) {
+      if (booster) {
         boosterCDTime = currentTime + booster * 1000;
         storage.set(BoosterCDTimeKey, boosterCDTime);
       }
+      storage.set(DidFetchAPIKey, true);
       handler(drugCDTime, medCDTime, boosterCDTime);
     })
     .catch(err => {
@@ -79,6 +80,10 @@ function showCooldowns() {
   });
 }
 
+if (window.location.href.indexOf('item.php') >= 0) {
+  // 访问过item页面，需要重新请求API
+  storage.remove(DidFetchAPIKey);
+}
 if (window.location.href.indexOf('travelagency.php') >= 0) {
   showCooldowns();
 }

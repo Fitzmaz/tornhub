@@ -6,7 +6,6 @@ function timeFormatter(time) {
   minutes = minutes < 10 ? "0" + minutes : minutes;
   seconds = seconds < 10 ? "0" + seconds : seconds;
   let formatted = hours + ":" + minutes + ":" + seconds;
-  console.log(formatted);
   return formatted;
 }
 
