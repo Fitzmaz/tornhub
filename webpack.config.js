@@ -7,9 +7,11 @@ module.exports = env => {
   let config = {
     mode: isDevelopment ? 'development' : 'production',
     entry: {
+      index: './src/index.js',
       // city: './src/city.js',
       // racing: './src/racing.js',
       travelagency: './src/travelagency.js',
+      rehab: './src/rehab.js',
     },
     plugins: [
       new CleanWebpackPlugin({ cleanStaleWebpackAssets: false }),

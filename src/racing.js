@@ -1,7 +1,7 @@
 import { userEvents } from './base/api';
 import storage from './base/storage';
-import { createContainer } from './base/dom';
-import './racing.css';
+import { createContainer, insertContainer, insertTopButton, createReportTable } from './base/dom';
+import './base/report.css';
 
 function ajaxComplete(success) {
   $(document).ajaxComplete((event, xhr, settings) => {
@@ -62,7 +62,7 @@ function updateRacingRecords(currentSkillLevel) {
   }
   // from应为上次查询时间，to应为当前时间
   let now = Date.now();
-  let yesterday = new Date(now - 1000 * 60 * 60 * 24); 
+  let yesterday = new Date(now - 1000 * 60 * 60 * 24);
   let from = racingRecordsQueryDate || yesterday;
   userEvents(from, now, filter, serializer).then(records => {
     if (!records.length) {
@@ -116,54 +116,46 @@ function ui_showResults(results) {
 }
 
 function ui_addRacingReportButton() {
-  const $top_links = $("#top-page-links-list").children("a");
-  if ($top_links.length <= 0 || $("#racing_report_btn").length) {
-    return;
-  }
-  const racingReportButton = '<a role="button" style="cursor: pointer" id="racing_report_btn" aria-labelledby="events" class=" events t-clear h c-pointer  m-icon line-h24 right last"><span class="icon-wrap svg-icon-wrap"><span class="link-icon-svg events "><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 17"><defs><style>.cls-1{opacity:0.35;}.cls-2{fill:#fff;}.cls-3{fill:#777;}</style></defs><g id="Ð¡Ð»Ð¾Ð¹_2" data-name="Ð¡Ð»Ð¾Ð¹ 2"><g id="icons"><g class="cls-1"><path class="cls-2" d="M8,1a8,8,0,1,0,8,8A8,8,0,0,0,8,1ZM6.47,3.87H9.53l-.77,7.18H7.24ZM8,14.55A1.15,1.15,0,1,1,9.15,13.4,1.14,1.14,0,0,1,8,14.55Z"></path></g><path class="cls-3" d="M8,0a8,8,0,1,0,8,8A8,8,0,0,0,8,0ZM6.47,2.87H9.53l-.77,7.18H7.24ZM8,13.55A1.15,1.15,0,1,1,9.15,12.4,1.14,1.14,0,0,1,8,13.55Z"></path></g></g></svg></span></span><span id="click_view_factions_text">Report</span></a>';
-  $top_links.last().after(racingReportButton);
-  $("#racing_report_btn").click(function () {
-    let reportElement = document.getElementsByClassName('racing-report')[0];
+  insertTopButton('racing_report_btn', 'Report', () => {
+    let tableClassName = 'racing-report';
+    let reportElement = document.getElementsByClassName(tableClassName)[0];
     if (reportElement) {
       reportElement.remove();
     } else {
-      showTable();
+      showTable(tableClassName);
     }
   });
 }
 
-function showTable() {
+function showTable(className) {
   let racingRecords = storage.get(racingRecordsKey);
-  let html = `
-		<table>
-			<thead>
-				<tr>
-					<th>RaceID</th>
-					<th>TrackName</th>
-					<th>Position</th>
-					<th>SkillLevel</th>
-				</tr>
-			</thead>
-			<tbody>
-  `;
-  racingRecords.forEach(record => {
+  let cols = [
+    {
+      title: 'RaceID',
+      field: 'raceID',
+    },
+    {
+      title: 'TrackName',
+      field: 'trackName',
+    },
+    {
+      title: 'Position',
+      field: 'position',
+    },
+    {
+      title: 'SkillLevel',
+      field: 'skillLevel',
+    },
+  ];
+  let rows = racingRecords.map((record) => {
+    let link = `<a href = "http://www.torn.com/loader.php?sid=racing&tab=log&raceID=${record.raceID}">${record.raceID}</a>`;
+    let { trackName, position } = record;
     let skillLevel = record.skillLevel ? Number(record.skillLevel).toFixed(4) : '-';
-    html += `
-      <tr>
-        <td>
-          <a href = "http://www.torn.com/loader.php?sid=racing&tab=log&raceID=${record.raceID}">${record.raceID}</a>
-        </td>
-        <td>${record.trackName}</td>
-        <td>${record.position}</td>
-        <td>${skillLevel}</td>
-      </tr>
-    `;
+    return { raceID: link, trackName, position, skillLevel };
   });
-  html += "</tbody></table>";
-
-  let el = createContainer('Report', html);
-  el.className = 'racing-report';
-  document.getElementsByClassName('content-title')[0].insertAdjacentElement('afterend', el);
+  let el = createReportTable(cols, rows);
+  el.className = className;
+  insertContainer(el);
 }
 
 function parseRacingData(data) {

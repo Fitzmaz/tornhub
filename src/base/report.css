@@ -1,26 +1,28 @@
-table {
-  width: 100%;
+.report-table {
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
   border-collapse: collapse;
   letter-spacing: 1px;
-  font-size: 0.5rem;
+  /* font-size: 0.5rem; */
 }
 
-td, th {
+.report-td, .report-th {
   padding: 5px 10px;
 }
 
-td {
+.report-td {
   text-align: center;
 }
 
-th {
+.report-th {
   background-color: rgb(235,235,235);
 }
 
-tr:nth-child(even) td {
+tr:nth-child(even) .report-td {
   background-color: rgb(250,250,250);
 }
 
-tr:nth-child(odd) td {
+tr:nth-child(odd) .report-td {
   background-color: rgb(245,245,245);
 }
