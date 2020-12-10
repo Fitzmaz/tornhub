@@ -66,9 +66,11 @@ function onRehabMessage(sessionID, message) {
     addictionLoss: matches[0],
     rehabTimes: matches[1],
     rehabCost: matches[2],
+    rehabDate: new Date().getTime(),
   }
   console.debug(JSON.stringify(rehabInfo));
   saveRehabData(sessionID, rehabInfo);
+  fetchDrugsInfo(sessionID);
 }
 
 function onAfterRehabMessage(sessionID, message) {
@@ -87,6 +89,7 @@ function onAfterRehabMessage(sessionID, message) {
 
 function showReport(className) {
   let cols = [
+    { title: '解毒日期', field: 'rehabDate' },
     { title: "解毒百分比", field: 'addictionLoss' },
     { title: '解毒格数', field: 'rehabTimes' },
     { title: '剩余格数', field: 'timesToFullyRehab' },
@@ -95,7 +98,17 @@ function showReport(className) {
     { title: 'OD次数', field: 'overdosed' },
   ];
   let data = storage.get(RehabDataKey) || {};
-  let el = createReportTable(cols, Object.values(data));
+  // fetchDrugsInfo if needed
+  let latestSessionID = Object.keys(data).pop();
+  if (latestSessionID && typeof data[latestSessionID].xantaken === 'undefined' && new Date().getTime() - data[latestSessionID].rehabDate <= 1000 * 60 * 60) {
+    fetchDrugsInfo(latestSessionID);
+  }
+  // format rehabDate
+  let rows = Object.values(data).map(record => {
+    let rehabDate = record.rehabDate ? new Date(record.rehabDate).toLocaleString([], { hour12: false }) : '-';
+    return Object.assign(record, { rehabDate });
+  })
+  let el = createReportTable(cols, rows);
   el.className = className;
   insertContainer(el);
 }
