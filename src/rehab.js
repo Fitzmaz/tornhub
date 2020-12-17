@@ -14,6 +14,7 @@ function ajaxComplete(success) {
 
 const RehabRawDataKey = 'RehabRawDataKey';
 const RehabDataKey = 'RehabDataKey';
+let gSessionID;
 
 function saveData(key, sessionID, dataObject) {
   let data = storage.get(key) || {};
@@ -54,7 +55,10 @@ function fetchDrugsInfo(sessionID) {
   });
 }
 
-function onRehabMessage(sessionID, message) {
+function onRehabMessage(message) {
+  gSessionID = new Date().getTime();
+  let sessionID = gSessionID;
+  console.debug(`rehab session: ${sessionID}`);
   saveRehabRawData(sessionID, { rehabMessage: message });
   let regexp = />(.*?)<\/span>/g;
   let matches = [];
@@ -73,7 +77,9 @@ function onRehabMessage(sessionID, message) {
   fetchDrugsInfo(sessionID);
 }
 
-function onAfterRehabMessage(sessionID, message) {
+function onAfterRehabMessage(message) {
+  let sessionID = gSessionID;
+  console.debug(`after rehab session: ${sessionID}`);
   saveRehabRawData(sessionID, { afterRehabMessage: message });
   try {
     var messageObject = JSON.parse(message);
@@ -114,12 +120,11 @@ function showReport(className) {
 }
 
 if (window.location.href.indexOf('index.php?page=rehab') >= 0) {
-  let sessionID = new Date().getTime();
   ajaxComplete((responseText) => {
     if (responseText.indexOf('You have lost') >= 0) {
-      onRehabMessage(sessionID, responseText);
+      onRehabMessage(responseText);
     } else if (responseText.indexOf('addicted') >= 0) {
-      onAfterRehabMessage(sessionID, responseText);
+      onAfterRehabMessage(responseText);
     }
   });
 }
