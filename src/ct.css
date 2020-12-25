@@ -1,0 +1,6 @@
+@keyframes pulse { 0% { opacity: 1; box-shadow: 0 0 0 0px #ce81dd; bottom: 200%; right: 200%; height: 500%; width: 500%; } 50% { bottom: 250%; right: 250%; height: 600%; width: 600%; } 100% { opacity: 0.5; box-shadow: 0 0 0 100px rgba(0, 0, 0, 0); bottom: 200%; right: 200%; height: 500%; width: 500%; } }
+@keyframes pulseR { 0% { box-shadow: 0 0 0 0 rgba(227,90,52, 0.8); } 90% { box-shadow: 0 0 0 175px rgba(227,90,52, 0); } 100% { box-shadow: 0 0 0 0 rgba(227,90,52, 0); } }
+@keyframes pulseD { 0% { box-shadow: 0 0 0 0 rgba(200,200,200, 0.8); } 90% { box-shadow: 0 0 0 100px rgba(200,200,200, 0); } 100% { box-shadow: 0 0 0 0 rgba(200,200,200, 0); } }
+div.items-layer div.ct-item::after { background-image: radial-gradient(rgba(0, 0, 0, 0), #BD6FCC); border-radius: 100%; content: ''; display: block; position: relative; bottom: 200%; right: 200%; height: 500%; width: 500%; animation: pulse 5s ease-out; animation-iteration-count: infinite; }
+.pulseR {border-radius: 50%; box-shadow: 0 0 0 rgba(227,90,52, 0.4); animation: pulseR 2s infinite;}
+.pulseD {border-radius: 50%; box-shadow: 0 0 0 rgba(200,200,200, 0.4); animation: pulseD 2s infinite;}
