@@ -14,7 +14,7 @@ function ajaxComplete(success) {
 
 const AddictionPoints = {
   can: 1,
-  // ext,
+  ext: 20,
   ket: 7,
   // lsd,
   // opi,
@@ -164,12 +164,15 @@ function showReport(className) {
     { title: '解毒格数', field: 'rehabTimes' },
     { title: '剩余格数', field: 'timesToFullyRehab' },
     { title: '总解毒格数', field: 'totalRehabTimes' },
-    { title: 'xanan个数', field: 'xantaken' },
+    { title: 'xan个数', field: 'xantaken' },
+    { title: 'ecs个数', field: 'exttaken' },
     { title: 'OD次数', field: 'overdosed' },
-    { title: '当前剩余AP', field: 'remainingPoints' },
     { title: '嗑药增加AP', field: 'drugPoints' },
+    { title: 'OD增加AP', field: 'overdosePoints' },
     { title: '自然消退AP', field: 'decayPoints' },
     { title: 'AP变化量', field: 'deltaPoints' },
+    { title: '*解毒减AP', field: 'rehabPoints' },
+    { title: '*当前剩余AP', field: 'remainingPoints' },
   ];
   let data = storage.get(RehabDataKey) || {};
   // fetchDrugsInfo if needed
@@ -180,9 +183,11 @@ function showReport(className) {
   // format rehabDate
   let rows = Object.values(data).map((record, index, dataArray) => {
     let drugPoints;
+    let overdosePoints;
     let decayPoints;
-    let remainingPoints;
     let deltaPoints;
+    let rehabPoints;
+    let remainingPoints;
     if (index > 0) {
       let lastRecord = dataArray[index - 1];
       drugPoints = Object.keys(AddictionPoints).reduce((acc, val, idx) => {
@@ -192,11 +197,17 @@ function showReport(className) {
         let addictions = drugsTaken * ap;
         return acc + addictions;
       }, 0);
+      // 无法知道od的药品，这里假定都是xan
+      overdosePoints = (record.overdosed - lastRecord.overdosed) * (0.5 * OverdosePoints - Math.ceil(0.5 * AddictionPoints.xan));
       decayPoints = naturalDecayTimes(lastRecord.rehabDate, record.rehabDate) * NaturalDecayPoints;
+      deltaPoints = drugPoints + overdosePoints - decayPoints;
 
+      // 这次解毒后的剩余points
+      let calResult = calPoints(record);
+      rehabPoints = calResult.pointsBeforeRehab - calResult.pointsRemaining;
+      remainingPoints = calResult.pointsRemaining;
       // 上次解毒后到这次解毒前points的变化量
-      remainingPoints = calPoints(record).pointsRemaining;
-      deltaPoints = calPoints(record).pointsBeforeRehab - calPoints(lastRecord).pointsRemaining;
+      // deltaPoints = calPoints(record).pointsBeforeRehab - calPoints(lastRecord).pointsRemaining;
       function calPoints(record) {
         let rehabPoints = pointsPerRehab(record.totalRehabTimes) * record.rehabTimes;
         let lossPercentage = Number(record.addictionLoss.split("%")[0]) / 100;
@@ -207,7 +218,7 @@ function showReport(className) {
     }
 
     let rehabDate = record.rehabDate ? new Date(record.rehabDate).toLocaleString([], { hour12: false }) : '-';
-    return Object.assign(record, { rehabDate, drugPoints, decayPoints, remainingPoints, deltaPoints });
+    return Object.assign(record, { rehabDate, drugPoints, overdosePoints, decayPoints, deltaPoints, rehabPoints, remainingPoints });
   })
   let el = createReportTable(cols, rows);
   el.className = className;
