@@ -61,14 +61,36 @@ At 6586 rehabs 1 rehab ~ 2.4 or ~ 2.6 addiction points?
 At 10097 rehabs 1 rehab ~ 1.452 addiction points?
 At 11140 rehabs 1 rehab ~ 1.282 addiction points?
 At 24107 rehabs 1 rehab = 1.0 addiction points?
+
+已确认：
+At 70-89 rehabs 1 rehab = 60 addiction points
+At 93 rehabs 1 rehab = 55 addiction points
 */
 function pointsPerRehab(totalRehabTimes) {
-  if (totalRehabTimes >= 70 && totalRehabTimes < 112) {
+  if (totalRehabTimes <= 0) {
+    //TODO: 待确认
+    return 0;
+  } else if (totalRehabTimes < 70) {
+    //TODO: 待确认
+    return 0;
+  } else if (totalRehabTimes < 90) {
     return 60;
+  } else if (totalRehabTimes < 92) {
+    //TODO: 已知90、91、92总和169，暂未确认分别数值，暂时按57、57、55计算
+    return 57;
+  } else if (totalRehabTimes < 112) {
+    return 55;
   } else {
-    // TODO:
+    //TODO: 待确认
     return 0;
   }
+}
+function calcRehabPoints(before, after) {
+  let points = 0;
+  for (let i = before; i < after; i++) {
+    points += pointsPerRehab(i);
+  }
+  return points;
 }
 
 function calcPointsBeforeRehab(rehabPoints, lossPercentage) {
@@ -209,7 +231,7 @@ function showReport(className) {
       // 上次解毒后到这次解毒前points的变化量
       // deltaPoints = calPoints(record).pointsBeforeRehab - calPoints(lastRecord).pointsRemaining;
       function calPoints(record) {
-        let rehabPoints = pointsPerRehab(record.totalRehabTimes) * record.rehabTimes;
+        let rehabPoints = calcRehabPoints(lastRecord.totalRehabTimes, record.totalRehabTimes);
         let lossPercentage = Number(record.addictionLoss.split("%")[0]) / 100;
         let pointsBeforeRehab = calcPointsBeforeRehab(rehabPoints, lossPercentage);
         let pointsRemaining = pointsBeforeRehab - rehabPoints;
