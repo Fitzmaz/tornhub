@@ -2,6 +2,8 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
+const VueLoaderPlugin = require('vue-loader/lib/plugin');
+
 module.exports = env => {
   let isDevelopment = env && env.development;
   let config = {
@@ -18,6 +20,7 @@ module.exports = env => {
       new HtmlWebpackPlugin({
         title: 'Development',
       }),
+      new VueLoaderPlugin(),
     ],
     output: {
       filename: '[name].bundle.js',
@@ -28,6 +31,10 @@ module.exports = env => {
         {
           test: /\.css$/i,
           use: ['style-loader', 'css-loader'],
+        },
+        {
+          test: /\.vue$/,
+          loader: 'vue-loader'
         },
       ],
     },
