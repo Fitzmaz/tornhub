@@ -22,7 +22,7 @@ const AddictionPoints = {
   // spe,
   // pcp,
   xan: 35,
-  // vic,
+  vic: 13,
 };
 const OverdosePoints = 100;
 const NaturalDecayPoints = 21;
