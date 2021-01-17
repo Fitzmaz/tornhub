@@ -29,6 +29,26 @@ function insertTopButton(id, title, onClick) {
   $(`#${id}`).click(onClick);
 }
 
+function insertMenuItem(title, handler) {
+  const $menu = $('button.header-menu-icon');
+  $menu.on('click', function () {
+    setTimeout(addItem, 0);
+    function addItem() {
+      let aElement = document.createElement('a');
+      aElement.href = 'javascript:void(0)';
+      aElement.text = title;
+      aElement.onclick = handler;
+
+      let liElement = document.createElement('li');
+      liElement.className = 'menu-item-link';
+      liElement.appendChild(aElement);
+      document.body.appendChild(liElement);
+
+      document.querySelector('ul.menu-items').insertAdjacentElement('afterbegin', liElement);
+    }
+  });
+}
+
 function createReportTable(cols, rows) {
   function arrayToHtml(array, tag, className) {
     return array.reduce((acc, val, idx) => {
@@ -62,5 +82,6 @@ module.exports = {
   createContainer,
   insertContainer,
   insertTopButton,
+  insertMenuItem,
   createReportTable,
 };

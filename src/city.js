@@ -2,6 +2,7 @@ import './city.css';
 import { formatMoney } from './base/util';
 import storage from './base/storage';
 import { fetchAPI } from './base/api';
+import { addTable } from './vue/store';
 
 const [seconds, minutes, hours, days] = [1000, 60 * 1000, 60 * 60 * 1000, 24 * 60 * 60 * 1000];
 
@@ -39,8 +40,73 @@ function getItemList() {
   return Promise.resolve(itemList);
 }
 
-function main() {
+function getTCTDate() {
+  let now = new Date();
+  let year = now.getUTCFullYear();
+  let month = now.getUTCMonth() + 1;
+  let day = now.getUTCDate();
+  function zeroPadding(number, length) {
+    let result = String(number);
+    while (result.length < length) {
+      result = '0' + result;
+    }
+    return result;
+  }
+  return `${year}-${zeroPadding(month, 2)}-${zeroPadding(day, 2)}`;
+}
+
+const StorageKeyCityFinds = "StorageKeyCityFinds";
+function recordItems(newItems) {
+  let date = getTCTDate();
+  let cityFinds = storage.get(StorageKeyCityFinds) || {};
+  let items = cityFinds[date];
+  if (typeof items !== 'undefined') {
+    // 今日数据已记录
+    return;
+  }
+  cityFinds[date] = newItems;
+  storage.set(StorageKeyCityFinds, cityFinds);
+}
+function loadTableDataAsync() {
+  getItemList().then(itemList => {
+    let rows = [];
+    let cityFinds = storage.get(StorageKeyCityFinds) || {};
+    for (const date in cityFinds) {
+      let itemIDs = cityFinds[date];
+      // 计算总价值
+      let value = itemIDs.reduce((acc, val, idx) => {
+        let { name, market_value } = itemList[val];
+        return acc + Number(market_value);
+      }, 0);
+
+      rows.push({ date, count: itemIDs.length, value: formatMoney(value) })
+    }
+
+    addTable({
+      title: 'cityFinds',
+      cols: [
+        {
+          title: "日期(TCT)",
+          field: "date",
+        },
+        {
+          title: "个数",
+          field: "count",
+        },
+        {
+          title: "总价值",
+          field: "value",
+        },
+      ],
+      rows,
+    });
+  }).catch(err => alert(err));
+}
+
+function alertFinds() {
   let itemIDs = getItemIDsOnMap();
+  recordItems(itemIDs);
+
   if (itemIDs.length <= 0) {
     alert("0 item on the map");
     return;
@@ -54,4 +120,5 @@ function main() {
   }).catch(err => alert(err));
 }
 
-main();
+alertFinds();
+loadTableDataAsync();
