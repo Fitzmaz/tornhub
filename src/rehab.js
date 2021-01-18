@@ -100,7 +100,15 @@ function calcPointsBeforeRehab(rehabPoints, lossPercentage) {
 
 const RehabRawDataKey = 'RehabRawDataKey';
 const RehabDataKey = 'RehabDataKey';
-let gSessionID;
+let gSession = {
+  sessionID: null,
+  startSession() {
+    this.sessionID = new Date().getTime();
+  },
+  stopSession() {
+    this.sessionID = null;
+  },
+};
 
 function saveData(key, sessionID, dataObject) {
   let data = storage.get(key) || {};
@@ -142,8 +150,8 @@ function fetchDrugsInfo(sessionID) {
 }
 
 function onRehabMessage(message) {
-  gSessionID = new Date().getTime();
-  let sessionID = gSessionID;
+  gSession.startSession();
+  let sessionID = gSession.sessionID;
   console.debug(`rehab session: ${sessionID}`);
   saveRehabRawData(sessionID, { rehabMessage: message });
   let regexp = />(.*?)<\/span>/g;
@@ -164,8 +172,12 @@ function onRehabMessage(message) {
 }
 
 function onAfterRehabMessage(message) {
-  let sessionID = gSessionID;
-  console.debug(`after rehab session: ${sessionID}`);
+  let sessionID = gSession.sessionID;
+  if (sessionID == null) {
+    console.debug('sessionID is null');
+    return;
+  }
+  gSession.stopSession();
   saveRehabRawData(sessionID, { afterRehabMessage: message });
   try {
     var messageObject = JSON.parse(message);
