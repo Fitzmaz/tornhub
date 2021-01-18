@@ -64,7 +64,9 @@ At 24107 rehabs 1 rehab = 1.0 addiction points?
 
 已确认：
 At 70-89 rehabs 1 rehab = 60 addiction points
-At 93 rehabs 1 rehab = 55 addiction points
+90+91+92=169
+At 93-96 rehabs 1 rehab = 55 addiction points
+97+98=109
 */
 function pointsPerRehab(totalRehabTimes) {
   if (totalRehabTimes <= 0) {
@@ -78,8 +80,10 @@ function pointsPerRehab(totalRehabTimes) {
   } else if (totalRehabTimes < 92) {
     //TODO: 已知90、91、92总和169，暂未确认分别数值，暂时按57、57、55计算
     return 57;
-  } else if (totalRehabTimes < 112) {
+  } else if (totalRehabTimes < 98) {
     return 55;
+  } else if (totalRehabTimes < 112) {
+    return 54;
   } else {
     //TODO: 待确认
     return 0;
@@ -216,6 +220,7 @@ function showReport(className) {
   }
   // format rehabDate
   let rows = Object.values(data).map((record, index, dataArray) => {
+    let addictionLoss = record.addictionLoss;
     let drugPoints;
     let overdosePoints;
     let decayPoints;
@@ -240,6 +245,9 @@ function showReport(className) {
       let calResult = calPoints(record);
       rehabPoints = calResult.pointsBeforeRehab - calResult.pointsRemaining;
       remainingPoints = calResult.pointsRemaining;
+      let estimatedLoss = (rehabPoints / (rehabPoints + remainingPoints) * 100).toFixed(2);
+      // override addictionLoss
+      addictionLoss = `${addictionLoss}(${estimatedLoss})`;
       // 上次解毒后到这次解毒前points的变化量
       // deltaPoints = calPoints(record).pointsBeforeRehab - calPoints(lastRecord).pointsRemaining;
       function calPoints(record) {
@@ -252,7 +260,7 @@ function showReport(className) {
     }
 
     let rehabDate = record.rehabDate ? new Date(record.rehabDate).toLocaleString([], { hour12: false }) : '-';
-    return Object.assign(record, { rehabDate, drugPoints, overdosePoints, decayPoints, deltaPoints, rehabPoints, remainingPoints });
+    return Object.assign(record, { rehabDate, addictionLoss, drugPoints, overdosePoints, decayPoints, deltaPoints, rehabPoints, remainingPoints });
   })
   let el = createReportTable(cols, rows);
   el.className = className;
