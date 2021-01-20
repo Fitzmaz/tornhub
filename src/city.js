@@ -40,8 +40,7 @@ function getItemList() {
   return Promise.resolve(itemList);
 }
 
-function getTCTDate() {
-  let now = new Date();
+function getTCTDate(now) {
   let year = now.getUTCFullYear();
   let month = now.getUTCMonth() + 1;
   let day = now.getUTCDate();
@@ -57,36 +56,38 @@ function getTCTDate() {
 
 const StorageKeyCityFinds = "StorageKeyCityFinds";
 function recordItems(newItems) {
-  let date = getTCTDate();
+  let now = new Date();
+  let date = getTCTDate(now);
   let cityFinds = storage.get(StorageKeyCityFinds) || {};
-  let items = cityFinds[date];
-  if (typeof items !== 'undefined') {
+  let data = cityFinds[date];
+  if (typeof data !== 'undefined') {
     // 今日数据已记录
     return;
   }
-  cityFinds[date] = newItems;
+  cityFinds[date] = { items: newItems, time: now.getTime() };
   storage.set(StorageKeyCityFinds, cityFinds);
 }
 function loadTableDataAsync() {
   getItemList().then(itemList => {
     let rows = [];
     let cityFinds = storage.get(StorageKeyCityFinds) || {};
-    for (const date in cityFinds) {
-      let itemIDs = cityFinds[date];
+    for (const key in cityFinds) {
+      let { items, time } = cityFinds[key];
+      let date = new Date(time).toLocaleString([], { hour12: false });
       // 计算总价值
-      let value = itemIDs.reduce((acc, val, idx) => {
+      let value = items.reduce((acc, val, idx) => {
         let { name, market_value } = itemList[val];
         return acc + Number(market_value);
       }, 0);
 
-      rows.push({ date, count: itemIDs.length, value: formatMoney(value) })
+      rows.push({ date, count: items.length, value: formatMoney(value) })
     }
 
     addTable({
       title: 'cityFinds',
       cols: [
         {
-          title: "日期(TCT)",
+          title: "日期",
           field: "date",
         },
         {
