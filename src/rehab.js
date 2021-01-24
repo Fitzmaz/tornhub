@@ -75,15 +75,10 @@ function pointsPerRehab(totalRehabTimes) {
   } else if (totalRehabTimes < 70) {
     //TODO: 待确认
     return 0;
-  } else if (totalRehabTimes < 90) {
+  } else if (totalRehabTimes < 91) {
     return 60;
-  } else if (totalRehabTimes < 92) {
-    //TODO: 已知90、91、92总和169，暂未确认分别数值，暂时按57、57、55计算
-    return 57;
-  } else if (totalRehabTimes < 98) {
-    return 55;
   } else if (totalRehabTimes < 112) {
-    return 54;
+    return 55;
   } else {
     //TODO: 待确认
     return 0;
@@ -245,7 +240,7 @@ function showReport(className) {
       let calResult = calPoints(record);
       rehabPoints = calResult.pointsBeforeRehab - calResult.pointsRemaining;
       remainingPoints = calResult.pointsRemaining;
-      let estimatedLoss = (rehabPoints / (rehabPoints + remainingPoints) * 100).toFixed(2);
+      let estimatedLoss = formatLoss(rehabPoints / (rehabPoints + remainingPoints));
       // override addictionLoss
       addictionLoss = `${addictionLoss}(${estimatedLoss})`;
       // 上次解毒后到这次解毒前points的变化量
@@ -255,7 +250,22 @@ function showReport(className) {
         let lossPercentage = Number(record.addictionLoss.split("%")[0]) / 100;
         let pointsBeforeRehab = calcPointsBeforeRehab(rehabPoints, lossPercentage);
         let pointsRemaining = pointsBeforeRehab - rehabPoints;
+        if (record.addictionLoss !== formatLoss(rehabPoints/pointsBeforeRehab)) {
+          // 解多格时出现rehabPoints比期望的值少1点的情况，原因暂未明确
+          rehabPoints = rehabPoints - 1;
+          pointsBeforeRehab = calcPointsBeforeRehab(rehabPoints, lossPercentage);
+          pointsRemaining = pointsBeforeRehab - rehabPoints;
+        }
         return { pointsBeforeRehab, pointsRemaining };
+      }
+      function formatLoss(numberValue) {
+        if (numberValue > 1 || numberValue < 0) {
+          return 'invalid';
+        }
+        // 精确到小数点后两位
+        let stringValue = (numberValue * 100).toFixed(2);
+        // 移除末尾的'0'
+        return Number(stringValue).toString() + '%';
       }
     }
 
