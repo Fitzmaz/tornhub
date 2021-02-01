@@ -8,6 +8,20 @@ function makeUrl(key, section, fields, userID, from, to) {
   return url;
 }
 
+let requestHistory = {
+  requestTime: {},
+  willHitCache(url) {
+    let { pathname } = new URL(url);
+    let time = this.requestTime[pathname];
+    // 30s内请求同一api返回的结果会命中缓存
+    return Date.now() - time <= 1000 * 30;
+  },
+  recordRequestTime(url) {
+    let { pathname } = new URL(url);
+    this.requestTime[pathname] = Date.now();
+  }
+}
+
 function fetchAPI(section, fields, userID, from, to) {
   //TODO: stored by icefrog
   let APIKey = localStorage.getItem("APIKey");
@@ -15,6 +29,10 @@ function fetchAPI(section, fields, userID, from, to) {
     return Promise.reject("APIKey not found");
   }
   let url = makeUrl(APIKey, section, fields, userID, from, to);
+  if (requestHistory.willHitCache(url)) {
+    return Promise.reject('this request will hit cache');
+  }
+  requestHistory.recordRequestTime(url);
   return new Promise((resolve, reject) => {
     fetch(url)
       .then(response => response.json())
