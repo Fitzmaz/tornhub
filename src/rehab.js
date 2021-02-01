@@ -1,4 +1,4 @@
-import { fetchAPI } from './base/api';
+import { fetchAPI, userEvents } from './base/api';
 import storage from './base/storage';
 import { createReportTable, insertTopButton, insertContainer } from './base/dom';
 import './base/report.css'
@@ -24,8 +24,18 @@ const AddictionPoints = {
   xan: 35,
   vic: 13,
 };
-const OverdosePoints = 100;
 const NaturalDecayPoints = 21;
+
+function overdoseBAPForDrug(drugName) {
+  //TODO: 其他drug待明确
+  if (drugName === 'xan') {
+    return 100;
+  } else if (drugName === 'ket') {
+    return 50;
+  } else {
+    return 0;
+  }
+}
 
 function naturalDecayTimes(fromDate, toDate) {
   // Fri Dec 25 2020 12:00:00 GMT+0800 (中国标准时间)
@@ -124,6 +134,51 @@ function saveRehabData(sessionID, dataObject) {
   saveData(RehabDataKey, sessionID, dataObject);
 }
 
+/*
+这里假定OD后会立即去瑞士解毒，因此2次解毒之间最多只有1次OD，只需要查询从上次解毒到现在为止user.events包含overdose的所有事件，匹配最后一条事件的drugName。
+OD事件消息例子：
+You take some Xanax and down a glass of water. A headache is followed by nausea and vomiting. You must have overdosed!
+You snort one bump of Ketamine for each nostril. You overdose.
+ */
+function checkOverdoseDrugName(sessionID, fromDate, toDate) {
+  const UnknownDrugName = 'unknown';
+  function filter(eventObject) {
+    return eventObject.event.indexOf('overdose') != -1;
+  }
+  function serializer(eventObject) {
+    let drugNames = Object.keys(AddictionPoints);
+    let expString = `${drugNames.join('|')}`;
+    let regexp = new RegExp(expString, 'i');
+    let match = regexp.exec(eventObject.event);
+    let overdoseDrugName;
+    if (match) {
+      overdoseDrugName = match[0].toLowerCase();
+    } else {
+      overdoseDrugName = UnknownDrugName;
+    }
+    return { overdoseDrugName, event: eventObject.event };
+  }
+  userEvents(fromDate, toDate, filter, serializer)
+    .then(records => {
+      if (!records.length) {
+        console.debug('userEvents() result in 0 record');
+        return;
+      }
+      // 最后一条记录（最后一次OD event）的drugName
+      let lastRecord = records.pop();
+      let { overdoseDrugName, event } = lastRecord;
+      if (overdoseDrugName === UnknownDrugName) {
+        console.debug(`overdoseDrugName is unknown, event: ${event}`);
+        return;
+      }
+      console.info(`overdoseDrugName: ${overdoseDrugName}`);
+      saveRehabData(sessionID, { overdoseDrugName });
+    })
+    .catch(err => {
+      console.error(err);
+    });
+}
+
 function fetchDrugsInfo(sessionID) {
   fetchAPI('user', ['personalstats']).then(data => {
     let { personalstats } = data;
@@ -167,6 +222,7 @@ function onRehabMessage(message) {
   }
   console.debug(JSON.stringify(rehabInfo));
   saveRehabData(sessionID, rehabInfo);
+  //TODO: 30s内请求同一api会命中缓存，希望改成只请求一次api，让totalRehabTimes自增
   fetchDrugsInfo(sessionID);
 }
 
@@ -213,6 +269,26 @@ function showReport(className) {
   if (latestSessionID && typeof data[latestSessionID].xantaken === 'undefined' && new Date().getTime() - data[latestSessionID].rehabDate <= 1000 * 60 * 60) {
     fetchDrugsInfo(latestSessionID);
   }
+  // checkOverdoseDrugName if needed
+  Object.keys(data).forEach((sessionID, index, array) => {
+    if (index <= 0) {
+      return;
+    }
+    let lastRecord = data[array[index - 1]];
+    let record = data[sessionID];
+    if (record.overdoseDrugName) {
+      return;
+    }
+    let odTimes = record.overdosed - lastRecord.overdosed;
+    if (odTimes == 0) {
+      return;
+    }
+    if (odTimes > 1) {
+      console.error(`两次解毒之间OD次数大于1，当前sessionID: ${sessionID}`);
+      return;
+    }
+    checkOverdoseDrugName(sessionID, lastRecord.rehabDate, record.rehabDate);
+  });
   // format rehabDate
   let rows = Object.values(data).map((record, index, dataArray) => {
     let addictionLoss = record.addictionLoss;
@@ -231,8 +307,15 @@ function showReport(className) {
         let addictions = drugsTaken * ap;
         return acc + addictions;
       }, 0);
-      // 无法知道od的药品，这里假定都是xan
-      overdosePoints = (record.overdosed - lastRecord.overdosed) * (0.5 * OverdosePoints - Math.ceil(0.5 * AddictionPoints.xan));
+      if (record.overdosed - lastRecord.overdosed > 0) {
+        let { overdoseDrugName } = record;
+        let overdoseDrugBAP = (overdoseDrugName && AddictionPoints[overdoseDrugName]) || 0;
+        // drugPoints是根据*taken的差量计算的，如果OD了，要减去OD药物的AP
+        drugPoints -= Math.ceil(0.5 * overdoseDrugBAP);
+        overdosePoints = 0.5 * overdoseBAPForDrug(overdoseDrugName);
+      } else {
+        overdosePoints = 0;
+      }
       decayPoints = naturalDecayTimes(lastRecord.rehabDate, record.rehabDate) * NaturalDecayPoints;
       deltaPoints = drugPoints + overdosePoints - decayPoints;
 
@@ -242,7 +325,9 @@ function showReport(className) {
       remainingPoints = calResult.pointsRemaining;
       let estimatedLoss = formatLoss(rehabPoints / (rehabPoints + remainingPoints));
       // override addictionLoss
-      addictionLoss = `${addictionLoss}(${estimatedLoss})`;
+      if (addictionLoss !== estimatedLoss) {
+        addictionLoss = `${addictionLoss}(${estimatedLoss})`;
+      }
       // 上次解毒后到这次解毒前points的变化量
       // deltaPoints = calPoints(record).pointsBeforeRehab - calPoints(lastRecord).pointsRemaining;
       function calPoints(record) {
@@ -250,7 +335,7 @@ function showReport(className) {
         let lossPercentage = Number(record.addictionLoss.split("%")[0]) / 100;
         let pointsBeforeRehab = calcPointsBeforeRehab(rehabPoints, lossPercentage);
         let pointsRemaining = pointsBeforeRehab - rehabPoints;
-        if (record.addictionLoss !== formatLoss(rehabPoints/pointsBeforeRehab)) {
+        if (record.addictionLoss !== formatLoss(rehabPoints / pointsBeforeRehab)) {
           // 解多格时出现rehabPoints比期望的值少1点的情况，原因暂未明确
           rehabPoints = rehabPoints - 1;
           pointsBeforeRehab = calcPointsBeforeRehab(rehabPoints, lossPercentage);
@@ -270,7 +355,7 @@ function showReport(className) {
     }
 
     let rehabDate = record.rehabDate ? new Date(record.rehabDate).toLocaleString([], { hour12: false }) : '-';
-    return Object.assign(record, { rehabDate, addictionLoss, drugPoints, overdosePoints, decayPoints, deltaPoints, rehabPoints, remainingPoints });
+    return Object.assign(Object.assign({}, record), { rehabDate, addictionLoss, drugPoints, overdosePoints, decayPoints, deltaPoints, rehabPoints, remainingPoints });
   })
   let el = createReportTable(cols, rows);
   el.className = className;
