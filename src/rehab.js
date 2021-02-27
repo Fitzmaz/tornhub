@@ -87,8 +87,11 @@ function pointsPerRehab(totalRehabTimes) {
     return 0;
   } else if (totalRehabTimes < 91) {
     return 60;
-  } else if (totalRehabTimes < 112) {
-    return 55;
+  } else if (totalRehabTimes < 121) {
+    return 54.5;
+  } else if (totalRehabTimes < 168) {
+    //TODO: 待确认边界值，142-168之间
+    return 50;
   } else {
     //TODO: 待确认
     return 0;
@@ -331,16 +334,17 @@ function showReport(className) {
       // 上次解毒后到这次解毒前points的变化量
       // deltaPoints = calPoints(record).pointsBeforeRehab - calPoints(lastRecord).pointsRemaining;
       function calPoints(record) {
-        let rehabPoints = calcRehabPoints(lastRecord.totalRehabTimes, record.totalRehabTimes);
+        //TODO: 在总格数91-120阶段观察到有取整现象，解1格AP减55，解2格AP减109
+        let rehabPoints = Math.round(calcRehabPoints(lastRecord.totalRehabTimes, record.totalRehabTimes));
         let lossPercentage = Number(record.addictionLoss.split("%")[0]) / 100;
         let pointsBeforeRehab = calcPointsBeforeRehab(rehabPoints, lossPercentage);
         let pointsRemaining = pointsBeforeRehab - rehabPoints;
-        if (record.addictionLoss !== formatLoss(rehabPoints / pointsBeforeRehab)) {
-          // 解多格时出现rehabPoints比期望的值少1点的情况，原因暂未明确
-          rehabPoints = rehabPoints - 1;
-          pointsBeforeRehab = calcPointsBeforeRehab(rehabPoints, lossPercentage);
-          pointsRemaining = pointsBeforeRehab - rehabPoints;
-        }
+        // if (record.addictionLoss !== formatLoss(rehabPoints / pointsBeforeRehab)) {
+        //   // 解多格时出现rehabPoints比期望的值少1点的情况，原因暂未明确
+        //   rehabPoints = rehabPoints - 1;
+        //   pointsBeforeRehab = calcPointsBeforeRehab(rehabPoints, lossPercentage);
+        //   pointsRemaining = pointsBeforeRehab - rehabPoints;
+        // }
         return { pointsBeforeRehab, pointsRemaining };
       }
       function formatLoss(numberValue) {
