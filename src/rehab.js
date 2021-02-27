@@ -26,6 +26,32 @@ const AddictionPoints = {
 };
 const NaturalDecayPoints = 21;
 
+const RehabRawDataKey = 'RehabRawDataKey';
+const RehabDataKey = 'RehabDataKey';
+const RehabPersonalStatsKey = 'RehabPersonalStatsKey';
+
+function saveRehabPersonalStats() {
+  let statsData = storage.get(RehabPersonalStatsKey) || {};
+  let latestTimestamp = Object.keys(statsData).pop();
+  // 最近一次travel还未到达目的地
+  if (latestTimestamp && latestTimestamp > Date.now() / 1000) {
+    console.debug('latest personalstats is not yet staled');
+    return;
+  }
+  fetchAPI('user', ['basic', 'travel']).then(data => {
+    if (data && data.travel && data.travel.destination) {
+      let { destination, timestamp, departed, time_left } = data.travel;
+      if (destination !== 'Switzerland') return;
+      fetchAPI('user', ['personalstats']).then(data => {
+        let { personalstats } = data;
+        if (!personalstats) return;
+        statsData[timestamp] = personalstats;
+        storage.set(RehabPersonalStatsKey, statsData);
+      });
+    }
+  })
+}
+
 function overdoseBAPForDrug(drugName) {
   //TODO: 其他drug待明确
   if (drugName === 'xan') {
@@ -43,7 +69,6 @@ function naturalDecayTimes(fromDate, toDate) {
   const Day = 1000 * 60 * 60 * 24;
   let fromDays = Math.floor((new Date(fromDate).getTime() - BaseTime) / Day);
   let toDays = Math.floor((new Date(toDate).getTime() - BaseTime) / Day);
-  console.log(toDays - fromDays);
   return toDays - fromDays;
 }
 
@@ -109,18 +134,6 @@ function calcPointsBeforeRehab(rehabPoints, lossPercentage) {
   // 解毒百分比取整到小数点后两位，例如66.30%
   return Math.round(((rehabPoints / (lossPercentage - 0.00005) + rehabPoints / (lossPercentage + 0.00005)) / 2));
 }
-
-const RehabRawDataKey = 'RehabRawDataKey';
-const RehabDataKey = 'RehabDataKey';
-let gSession = {
-  sessionID: null,
-  startSession() {
-    this.sessionID = new Date().getTime();
-  },
-  stopSession() {
-    this.sessionID = null;
-  },
-};
 
 function saveData(key, sessionID, dataObject) {
   let data = storage.get(key) || {};
@@ -206,6 +219,16 @@ function fetchDrugsInfo(sessionID) {
   });
 }
 
+let gSession = {
+  sessionID: null,
+  startSession() {
+    this.sessionID = new Date().getTime();
+  },
+  stopSession() {
+    this.sessionID = null;
+  },
+};
+
 function onRehabMessage(message) {
   gSession.startSession();
   let sessionID = gSession.sessionID;
@@ -225,8 +248,6 @@ function onRehabMessage(message) {
   }
   console.debug(JSON.stringify(rehabInfo));
   saveRehabData(sessionID, rehabInfo);
-  //TODO: 30s内请求同一api会命中缓存，希望改成只请求一次api，让totalRehabTimes自增
-  fetchDrugsInfo(sessionID);
 }
 
 function onAfterRehabMessage(message) {
@@ -267,11 +288,6 @@ function showReport(className) {
     { title: '*当前剩余AP', field: 'remainingPoints' },
   ];
   let data = storage.get(RehabDataKey) || {};
-  // fetchDrugsInfo if needed
-  let latestSessionID = Object.keys(data).pop();
-  if (latestSessionID && typeof data[latestSessionID].xantaken === 'undefined' && new Date().getTime() - data[latestSessionID].rehabDate <= 1000 * 60 * 60) {
-    fetchDrugsInfo(latestSessionID);
-  }
   // checkOverdoseDrugName if needed
   Object.keys(data).forEach((sessionID, index, array) => {
     if (index <= 0) {
@@ -292,7 +308,47 @@ function showReport(className) {
     }
     checkOverdoseDrugName(sessionID, lastRecord.rehabDate, record.rehabDate);
   });
-  // format rehabDate
+  // 新数据的personalstats单独存储，填充data数据
+  let personalstatsData = storage.get(RehabPersonalStatsKey) || {};
+  Object.keys(personalstatsData).forEach((timestamp, index, array) => {
+    let personalstats = personalstatsData[timestamp];
+    if (index < array.length - 1) {
+      let next = array[index + 1];
+      let filtered = Object.values(data).filter((record) => {
+        return timestamp < record.rehabDate / 1000 && record.rehabDate / 1000 < next;
+      });
+      fill(filtered, personalstats);
+    } else {
+      let filtered = Object.values(data).filter((record) => {
+        return timestamp < record.rehabDate / 1000;
+      });
+      fill(filtered, personalstats);
+    }
+    function fill(filteredRecords, personalstats) {
+      let accRehabTimes = 0;
+      filteredRecords.forEach((record) => {
+        accRehabTimes += Number(record.rehabTimes);
+        let { rehabs, overdosed, cantaken, exttaken, kettaken, lsdtaken, opitaken, shrtaken, spetaken, pcptaken, xantaken, victaken } = personalstats;
+        let drugsInfo = {
+          totalRehabTimes: rehabs + accRehabTimes,
+          overdosed,
+          cantaken,
+          exttaken,
+          kettaken,
+          lsdtaken,
+          opitaken,
+          shrtaken,
+          spetaken,
+          pcptaken,
+          xantaken,
+          victaken,
+        };
+        Object.assign(record, drugsInfo);
+        console.info(`filled record: ${record}`)
+      });
+    }
+  });
+  // 根据data生成表格数据
   let rows = Object.values(data).map((record, index, dataArray) => {
     let addictionLoss = record.addictionLoss;
     let drugPoints;
@@ -385,4 +441,5 @@ if (window.location.href.indexOf('index.php') >= 0) {
       showReport(tableClassName);
     }
   });
+  saveRehabPersonalStats();
 }

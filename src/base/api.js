@@ -10,15 +10,22 @@ function makeUrl(key, section, fields, userID, from, to) {
 
 let requestHistory = {
   requestTime: {},
+  _keyFor(url) {
+    let { pathname, searchParams } = new URL(url);
+    let selections = searchParams.get('selections');
+    return `${pathname}?selections=${selections}`;
+  },
   willHitCache(url) {
-    let { pathname } = new URL(url);
-    let time = this.requestTime[pathname];
+    let cacheKey = this._keyFor(url);
+    let time = this.requestTime[cacheKey] || 0;
     // 30s内请求同一api返回的结果会命中缓存
     return Date.now() - time <= 1000 * 30;
   },
   recordRequestTime(url) {
-    let { pathname } = new URL(url);
-    this.requestTime[pathname] = Date.now();
+    let cacheKey = this._keyFor(url);
+    let time = Date.now();
+    this.requestTime[cacheKey] = time;
+    console.info(`requestHistory.requestTime['${cacheKey}'] = ${time}`)
   }
 }
 
