@@ -137,6 +137,47 @@ function calcPointsBeforeRehab(rehabPoints, lossPercentage) {
   return Math.round(((rehabPoints / (lossPercentage - 0.00005) + rehabPoints / (lossPercentage + 0.00005)) / 2));
 }
 
+function estimatedRehabPoints(rehabs) {
+  return 250000/(2857 + 12.85 * rehabs)
+}
+
+function calcEstimationCandidates(lossPercentage, rehabTimes, totalRehabTimes) {
+  const estimated = estimatedRehabPoints(totalRehabTimes) * rehabTimes
+  const error = estimated * 0.1
+  let candidates = []
+  for (let i = Math.floor(estimated - error); i <= Math.ceil(estimated + error); i++) {
+    let l = Math.floor(i / (lossPercentage - 0.00005))
+    let r = Math.ceil(i / (lossPercentage + 0.00005))
+    if ( l == r ) {
+      candidates.push({ original: l, loss: i, remaining: l - i })
+    }
+  }
+  return candidates
+}
+
+function showEstimation(lossPercentage, rehabTimes, totalRehabTimes) {
+  let cols = [
+    { title: '毒瘾(AP)', field: 'original' },
+    { title: "解毒(AP)", field: 'loss' },
+    { title: '剩余(AP)', field: 'remaining' },
+  ];
+  let rows = calcEstimationCandidates(lossPercentage, rehabTimes, totalRehabTimes)
+  let el = createReportTable(cols, rows);
+  el.className = 'rehab-estimation';
+  insertContainer(el);
+}
+
+function estimate(rehabInfo) {
+  fetchAPI('user', ['personalstats']).then(data => {
+    let { personalstats } = data
+    if (!personalstats) return
+    let lossPercentage = Number(rehabInfo.addictionLoss.split("%")[0]) / 100
+    let rehabTimes = Number(rehabInfo.rehabTimes)
+    let totalRehabTimes = personalstats.rehabs
+    showEstimation(lossPercentage, rehabTimes, totalRehabTimes)
+  });
+}
+
 function saveData(key, sessionID, dataObject) {
   let data = storage.get(key) || {};
   data[sessionID] = Object.assign(data[sessionID] || {}, dataObject);
@@ -250,6 +291,7 @@ function onRehabMessage(message) {
   }
   console.debug(JSON.stringify(rehabInfo));
   saveRehabData(sessionID, rehabInfo);
+  estimate(rehabInfo)
 }
 
 function onAfterRehabMessage(message) {
