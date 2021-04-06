@@ -16,11 +16,11 @@ const AddictionPoints = {
   can: 1,
   ext: 20,
   ket: 7,
-  // lsd,
-  // opi,
-  // shr,
-  // spe,
-  // pcp,
+  lsd: 20, //19-20
+  opi: 10, //9-10
+  shr: 6, //5-6
+  spe: 14, //13-14
+  pcp: 26, //25-26
   xan: 35,
   vic: 13,
 };
@@ -114,9 +114,11 @@ function pointsPerRehab(totalRehabTimes) {
     return 60;
   } else if (totalRehabTimes < 121) {
     return 54.5;
-  } else if (totalRehabTimes < 168) {
-    //TODO: 待确认边界值，142-168之间
+  } else if (totalRehabTimes < 151) {
     return 50;
+  } else if (totalRehabTimes < 190) {
+    //TODO: 待确认边界值，168-190之间
+    return 46.2;
   } else {
     //TODO: 待确认
     return 0;
