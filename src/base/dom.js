@@ -19,6 +19,13 @@ function insertContainer(el) {
   }
 }
 
+function insertContainerUnique(el) {
+  let existence = document.getElementsByClassName(el.className)[0];
+  if (!existence) {
+    insertContainer(el);
+  }
+}
+
 function insertTopButton(id, title, onClick) {
   const $top_links = $("#top-page-links-list").children("a");
   if ($top_links.length <= 0 || $(`#${id}`).length) {
@@ -81,6 +88,7 @@ function createReportTable(cols, rows) {
 module.exports = {
   createContainer,
   insertContainer,
+  insertContainerUnique,
   insertTopButton,
   insertMenuItem,
   createReportTable,
