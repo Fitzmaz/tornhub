@@ -1,6 +1,6 @@
 import { fetchAPI, userEvents } from './base/api';
 import storage from './base/storage';
-import { createReportTable, insertTopButton, insertContainer } from './base/dom';
+import { createReportTable, insertTopButton, insertContainer, overlayContainer } from './base/dom';
 import './base/report.css'
 
 function ajaxComplete(success) {
@@ -164,7 +164,7 @@ function showEstimation(lossPercentage, rehabTimes, totalRehabTimes) {
   let rows = calcEstimationCandidates(lossPercentage, rehabTimes, totalRehabTimes)
   let el = createReportTable(cols, rows);
   el.className = 'rehab-estimation';
-  insertContainer(el);
+  overlayContainer(el);
 }
 
 function estimate(rehabInfo) {
