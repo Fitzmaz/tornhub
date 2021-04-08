@@ -26,6 +26,26 @@ function insertContainerUnique(el) {
   }
 }
 
+function overlayContainer(el) {
+  let container = document.createElement('div');
+  container.className = 'overlay-container';
+
+  let content = document.createElement('div');
+  content.className = 'overlay-content';
+  content.appendChild(el);
+  container.appendChild(content);
+
+  let close = document.createElement('div');
+  close.className = 'overlay-close';
+  close.innerText = '关闭';
+  close.onclick = function () {
+    container.parentElement.removeChild(container);
+  }
+  container.appendChild(close);
+
+  document.body.insertAdjacentElement('beforeend', container);
+}
+
 function insertTopButton(id, title, onClick) {
   const $top_links = $("#top-page-links-list").children("a");
   if ($top_links.length <= 0 || $(`#${id}`).length) {
@@ -86,6 +106,7 @@ function createReportTable(cols, rows) {
 }
 
 module.exports = {
+  overlayContainer,
   createContainer,
   insertContainer,
   insertContainerUnique,
