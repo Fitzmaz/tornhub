@@ -29,14 +29,14 @@ let requestHistory = {
   }
 }
 
-function fetchAPI(section, fields, userID, from, to) {
+function fetchAPI(section, fields, userID, from, to, noCache) {
   //TODO: stored by icefrog
   let APIKey = localStorage.getItem("APIKey");
   if (APIKey == null) {
     return Promise.reject("APIKey not found");
   }
   let url = makeUrl(APIKey, section, fields, userID, from, to);
-  if (requestHistory.willHitCache(url)) {
+  if (noCache && requestHistory.willHitCache(url)) {
     return Promise.reject('this request will hit cache');
   }
   requestHistory.recordRequestTime(url);
