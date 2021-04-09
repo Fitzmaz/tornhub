@@ -38,16 +38,13 @@ function saveRehabPersonalStats() {
     console.debug('latest personalstats is not yet staled');
     return;
   }
-  fetchAPI('user', ['basic', 'travel']).then(data => {
-    if (data && data.travel && data.travel.destination) {
+  fetchAPI('user', ['basic', 'travel', 'personalstats']).then(data => {
+    if (data && data.travel && data.travel.destination && data.personalstats) {
       let { destination, timestamp, departed, time_left } = data.travel;
+      let { personalstats } = data;
       if (destination !== 'Switzerland') return;
-      fetchAPI('user', ['personalstats']).then(data => {
-        let { personalstats } = data;
-        if (!personalstats) return;
-        statsData[timestamp] = personalstats;
-        storage.set(RehabPersonalStatsKey, statsData);
-      });
+      statsData[timestamp] = personalstats;
+      storage.set(RehabPersonalStatsKey, statsData);
     }
   })
 }
