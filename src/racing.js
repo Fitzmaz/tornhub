@@ -1,4 +1,4 @@
-import { userEvents } from './base/api';
+import { userEvents, fetchAPI } from './base/api';
 import storage from './base/storage';
 import { createContainer, insertContainer, insertTopButton, createReportTable } from './base/dom';
 import './base/report.css';
@@ -108,7 +108,22 @@ function ui_showResults(results) {
       if (name == playername) {
         let place = crashed ? '!' : i + 1;
         const best = bestLap ? formatTimeMsec(bestLap * 1000) : null;
-        $(this).find('li.name').html($(this).find('li.name').html().replace(name, `(${place}) ${name}` + (best ? ` (${best})` : '')));
+        $(this).find('li.name').html($(this).find('li.name').html().replace(name, `(${place}) ${name}`));
+        return false;
+      }
+    });
+  }
+}
+
+function ui_showRacingPoints(racingPointsInfo) {
+  for (const userID in racingPointsInfo) {
+    const { playername, racingPoints } = racingPointsInfo[userID];
+    $('#leaderBoard').children('li').each(function () {
+      const $name = $(this).find('li.name');
+      const name = $name.text().trim();
+      if (name.indexOf(playername) >= 0) {
+        let newHTML = $name.html().replace(name, `${name} [${racingPoints}]`);
+        $name.html(newHTML);
         return false;
       }
     });
@@ -158,6 +173,7 @@ function showTable(className) {
   insertContainer(el);
 }
 
+// 比赛阶段显示名次
 function parseRacingData(data) {
   let skillLevel = data['user']['racinglevel'];
   updateRacingRecords(skillLevel);
@@ -200,10 +216,46 @@ function parseRacingData(data) {
   ui_showResults(results);
 }
 
+async function getRacingPoints(userID) {
+  const racingPointsCacheKey = 'racingPointsCacheKey';
+  const racingPointsCache = storage.get(racingPointsCacheKey) || {};
+  const racingPointsInfo = racingPointsCache[userID];
+  if (racingPointsInfo && Date.now() - racingPointsInfo.timestamp < 1000 * 60 * 60 * 24) {
+    return racingPointsInfo.points;
+  }
+  const data = await fetchAPI('user', ['personalstats'], userID);
+  let { personalstats } = data;
+  if (personalstats) {
+    let { racingpointsearned } = personalstats;
+    racingPointsCache[userID] = {
+      points: racingpointsearned,
+      timestamp: Date.now()
+    };
+    storage.set(racingPointsCacheKey, racingPointsCache);
+    return racingpointsearned;
+  }
+}
+
+// 准备阶段显示对手分数
+async function parseRacingData2(data) {
+  if (data.timeData.status >= 3) {
+    return;
+  }
+  const { carInfo } = data.raceData;
+  let result = {};
+  for (const key in carInfo) {
+    const { userID, playername } = carInfo[key];
+    let racingPoints = await getRacingPoints(userID);
+    result[userID] = { playername, racingPoints};
+  }
+  ui_showRacingPoints(result);
+}
+
 if (window.location.href.indexOf('loader.php?sid=racing') >= 0) {
   ajaxComplete((xhr) => {
     try {
       parseRacingData(JSON.parse(xhr.responseText));
+      parseRacingData2(JSON.parse(xhr.responseText));
       ui_addRacingReportButton();
     } catch (e) { }
   });
