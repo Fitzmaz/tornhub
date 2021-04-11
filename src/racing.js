@@ -23,17 +23,6 @@ function decodeBase64(data) {
   return null;
 }
 
-function formatTimeMsec(msec) {
-  function pad(num, size) {
-    return ('000000000' + num).substr(-size);
-  }
-  const hours = Math.floor((msec % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((msec % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((msec % (1000 * 60)) / 1000);
-  const mseconds = Math.floor(msec % 1000);
-  return (hours > 0 ? hours + ":" : '') + (hours > 0 || minutes > 0 ? pad(minutes, 2) + ":" : '') + pad(seconds, 2) + "." + pad(mseconds, 3);
-}
-
 const racingRecordsKey = 'racingRecordsKey';
 const racingRecordsIndexKey = 'racingRecordsIndexKey';
 const racingRecordsQueryDateKey = 'racingRecordsQueryDateKey';
@@ -107,7 +96,6 @@ function ui_showResults(results) {
       const name = $(this).find('li.name').text().trim();
       if (name == playername) {
         let place = crashed ? '!' : i + 1;
-        const best = bestLap ? formatTimeMsec(bestLap * 1000) : null;
         $(this).find('li.name').html($(this).find('li.name').html().replace(name, `(${place}) ${name}`));
         return false;
       }
@@ -254,8 +242,9 @@ async function parseRacingData2(data) {
 if (window.location.href.indexOf('loader.php?sid=racing') >= 0) {
   ajaxComplete((xhr) => {
     try {
-      parseRacingData(JSON.parse(xhr.responseText));
-      parseRacingData2(JSON.parse(xhr.responseText));
+      const data = JSON.parse(xhr.responseText);
+      parseRacingData(data);
+      parseRacingData2(data);
       ui_addRacingReportButton();
     } catch (e) { }
   });
