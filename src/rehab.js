@@ -24,7 +24,6 @@ const AddictionPoints = {
   xan: 35,
   vic: 13,
 };
-const NaturalDecayPoints = 21;
 
 const RehabRawDataKey = 'RehabRawDataKey';
 const RehabDataKey = 'RehabDataKey';
@@ -65,13 +64,30 @@ function overdoseBAPForDrug(drugName) {
   }
 }
 
-function naturalDecayTimes(fromDate, toDate) {
+function naturalDecayTimes(fromTime, toTime) {
   // Fri Dec 25 2020 12:00:00 GMT+0800 (中国标准时间)
   const BaseTime = 1608868800000;
   const Day = 1000 * 60 * 60 * 24;
-  let fromDays = Math.floor((new Date(fromDate).getTime() - BaseTime) / Day);
-  let toDays = Math.floor((new Date(toDate).getTime() - BaseTime) / Day);
+  let fromDays = Math.floor((fromTime - BaseTime) / Day);
+  let toDays = Math.floor((toTime - BaseTime) / Day);
   return toDays - fromDays;
+}
+
+function naturalDecayPoints(fromDate, toDate) {
+  //2021.4.20 20:00 GMT+8 例行维护后自然消退改为了20
+  const patchTime = 1618920000000
+  const NaturalDecayLegacy = 21;
+  const NaturalDecayNew = 20;
+
+  let fromTime = new Date(fromDate).getTime()
+  let toTime = new Date(toDate).getTime()
+  if (toTime < patchTime) {
+    return naturalDecayTimes(fromTime, toTime) * NaturalDecayLegacy
+  } else if (patchTime < fromTime) {
+    return naturalDecayTimes(fromTime, toTime) * NaturalDecayNew
+  } else {
+    return naturalDecayTimes(fromTime, patchTime) * NaturalDecayLegacy + naturalDecayTimes(patchTime, toTime) * NaturalDecayNew
+  }
 }
 
 /*
@@ -427,7 +443,7 @@ function showReport(className) {
       } else {
         overdosePoints = 0;
       }
-      decayPoints = naturalDecayTimes(lastRecord.rehabDate, record.rehabDate) * NaturalDecayPoints;
+      decayPoints = naturalDecayPoints(lastRecord.rehabDate, record.rehabDate)
       deltaPoints = drugPoints + overdosePoints - decayPoints;
 
       // 这次解毒后的剩余points
