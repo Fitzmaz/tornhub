@@ -43,8 +43,13 @@ function saveRehabPersonalStats() {
       let { destination, timestamp, departed, time_left } = data.travel;
       let { personalstats } = data;
       if (destination !== 'Switzerland') return;
+      if (statsData[timestamp]) {
+        console.debug(`rehab,stats exists for travel:${JSON.stringify(data.travel)}`);
+        return;
+      }
       statsData[timestamp] = personalstats;
       storage.set(RehabPersonalStatsKey, statsData);
+      console.debug(`rehab,new stats for travel:${JSON.stringify(data.travel)}`);
     }
   })
 }
@@ -116,6 +121,12 @@ function pointsPerRehab(totalRehabTimes) {
   } else if (totalRehabTimes < 190) {
     //TODO: 待确认边界值，168-190之间
     return 46.2;
+  } else if (totalRehabTimes < 214) {
+    //TODO: 待确认边界值，190-214之间
+    return 42.75;
+  } else if (totalRehabTimes < 283) {
+    //TODO: 待确认边界值，241-283之间
+    return 40;
   } else {
     //TODO: 待确认
     return 0;
@@ -329,26 +340,6 @@ function showReport(className) {
     { title: '*当前剩余AP', field: 'remainingPoints' },
   ];
   let data = storage.get(RehabDataKey) || {};
-  // checkOverdoseDrugName if needed
-  Object.keys(data).forEach((sessionID, index, array) => {
-    if (index <= 0) {
-      return;
-    }
-    let lastRecord = data[array[index - 1]];
-    let record = data[sessionID];
-    if (record.overdoseDrugName) {
-      return;
-    }
-    let odTimes = record.overdosed - lastRecord.overdosed;
-    if (odTimes == 0) {
-      return;
-    }
-    if (odTimes > 1) {
-      console.error(`两次解毒之间OD次数大于1，当前sessionID: ${sessionID}`);
-      return;
-    }
-    checkOverdoseDrugName(sessionID, lastRecord.rehabDate, record.rehabDate);
-  });
   // 新数据的personalstats单独存储，填充data数据
   let personalstatsData = storage.get(RehabPersonalStatsKey) || {};
   Object.keys(personalstatsData).forEach((timestamp, index, array) => {
@@ -388,6 +379,26 @@ function showReport(className) {
         console.info(`filled record: ${record}`)
       });
     }
+  });
+  // checkOverdoseDrugName if needed
+  Object.keys(data).forEach((sessionID, index, array) => {
+    if (index <= 0) {
+      return;
+    }
+    let lastRecord = data[array[index - 1]];
+    let record = data[sessionID];
+    if (record.overdoseDrugName) {
+      return;
+    }
+    let odTimes = record.overdosed - lastRecord.overdosed;
+    if (odTimes == 0) {
+      return;
+    }
+    if (odTimes > 1) {
+      console.error(`两次解毒之间OD次数大于1，当前sessionID: ${sessionID}`);
+      return;
+    }
+    checkOverdoseDrugName(sessionID, lastRecord.rehabDate, record.rehabDate);
   });
   // 根据data生成表格数据
   let rows = Object.values(data).map((record, index, dataArray) => {
