@@ -47,6 +47,13 @@ function overlayContainer(el) {
 }
 
 function insertTopButton(id, title, onClick) {
+  if (typeof $ === 'undefined') {
+    let button = document.createElement('div')
+    button.innerText = title
+    button.onclick = onClick
+    document.body.insertAdjacentElement('beforeend', button)
+    return
+  }
   const $top_links = $("#top-page-links-list").children("a");
   if ($top_links.length <= 0 || $(`#${id}`).length) {
     return;
@@ -76,7 +83,7 @@ function insertMenuItem(title, handler) {
   });
 }
 
-function createReportTable(cols, rows) {
+function createReportTable(cols, rows, title) {
   function arrayToHtml(array, tag, className) {
     return array.reduce((acc, val, idx) => {
       return `${acc}<${tag} class="${className}">${val}</${tag}>`;
@@ -102,7 +109,8 @@ function createReportTable(cols, rows) {
   });
   html += "</tbody></table>";
 
-  return createContainer('Report', html);
+  let containerTitle = typeof title === 'undefined' ? 'Report' : title
+  return createContainer(containerTitle, html);
 }
 
 module.exports = {
