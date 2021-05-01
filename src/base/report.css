@@ -9,11 +9,12 @@
 }
 
 .report-td, .report-th {
-  padding: 5px 10px;
+  border: 1px solid #c9c9c9 !important;
+  padding: 5px 10px !important;
 }
 
 .report-td {
-  text-align: center;
+  text-align: left;
 }
 
 .report-th {
