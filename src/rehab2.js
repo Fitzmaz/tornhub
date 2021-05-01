@@ -59,7 +59,7 @@ function calcCandidates(lossPercentage, rehabTimes) {
   return candidates
 }
 
-const NaturalDecayLogTitle = "NaturalDecayLogTitle"
+const NaturalDecayLogTitle = "Natural Recovery"
 function filterDrugLogs(drugLogs, fromTime, toTime) {
   let filtered = drugLogs.filter((log) => {
     //TODO: cat=62则无需过滤Rehab
@@ -177,7 +177,7 @@ function createTableRows(rehabLogs, drugLogs) {
 
   // 最近一次Rehab以后的Drug记录
   let fromTime = rehabLogs[0].timestamp * 1000
-  let toTime = drugLogs[0].timestamp * 1000 + 1
+  let toTime = Date.now()
   let latestDrugLogs = filterDrugLogs(drugLogs, fromTime, toTime)
   let latestDrugRows = createDrugRows(latestDrugLogs, tableRows[tableRows.length - 1].points)
   tableRows = tableRows.concat(latestDrugRows)
@@ -192,6 +192,9 @@ async function fetchLogs() {
 
   const rehabLogs = await fetch(rehabLogsUrl).then(response => response.json())
   const drugLogs = await fetch(drugLogsUrl).then(response => response.json())
+  // const rehabLogs = require("./data/user.log&log=6005.json")
+  // const drugLogs = require(".//data/user.log&cat=62.json")
+
   return { rehabLogs, drugLogs }
 }
 
