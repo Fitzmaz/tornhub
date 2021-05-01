@@ -226,9 +226,9 @@ async function getRacingPoints(userID) {
 
 // 准备阶段显示对手分数
 async function parseRacingData2(data) {
-  if (data.timeData.status >= 3) {
-    return;
-  }
+  // if (data.timeData.status >= 3) {
+  //   return;
+  // }
   const { carInfo } = data.raceData;
   let result = {};
   for (const key in carInfo) {
