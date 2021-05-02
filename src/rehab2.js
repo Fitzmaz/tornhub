@@ -14,7 +14,7 @@ const AddictionPoints = {
   206: 35, // Xanax
 }
 
-const ODAddictionPoints = {
+const OverdosePoints = {
   196: 0, // Cannabis
   197: 0, // Ecstasy
   198: 50, // Ketamine
@@ -27,31 +27,35 @@ const ODAddictionPoints = {
   206: 100, // Xanax
 }
 
-function nextNaturalDecayTime(time) {
-  // Fri Dec 25 2020 12:00:00 GMT+0800 (中国标准时间)
+// 计算某一时间之后的下次自然恢复时间
+function nextNaturalRecoveryTime(time) {
+  // BaseTime主要用于取整，可以为任意日期12点整的时间，这里取的是Fri Dec 25 2020 12:00:00 GMT+0800
   const BaseTime = 1608868800000
   const Day = 1000 * 60 * 60 * 24
   let days = Math.ceil((time - BaseTime) / Day)
   return BaseTime + days * Day
 }
 
-function getDateString(timestamp) {
+function formatDateString(timestamp) {
   return new Date(timestamp * 1000).toLocaleString([], { hour12: false })
 }
 
+// 按timestamp升序排序的compare function
 function compareTimestamp(a, b) {
   if (a.timestamp < b.timestamp) return -1
   if (a.timestamp > b.timestamp) return 1
   return 0
 }
 
-function calcCandidates(lossPercentage, rehabTimes) {
+// 根据解毒百分比和解毒次数计算所有可行解
+function calcCandidates(addiction, rehabTimes) {
   const MinPoints = 1
   const MaxPoints = 90
+  let rehabPercentage = addiction / 100
   let candidates = []
   for (let i = MinPoints * rehabTimes; i <= MaxPoints * rehabTimes; i++) {
-    let l = Math.floor(i / (lossPercentage - 0.00005))
-    let r = Math.ceil(i / (lossPercentage + 0.00005))
+    let l = Math.floor(i / (rehabPercentage - 0.00005))
+    let r = Math.ceil(i / (rehabPercentage + 0.00005))
     if (l == r) {
       candidates.push({ original: l, loss: i, remaining: l - i })
     }
@@ -59,7 +63,7 @@ function calcCandidates(lossPercentage, rehabTimes) {
   return candidates
 }
 
-const NaturalDecayLogTitle = "Natural Recovery"
+const NaturalRecoveryLogTitle = "Natural Recovery"
 function filterDrugLogs(drugLogs, fromTime, toTime) {
   let filtered = drugLogs.filter((log) => {
     //TODO: cat=62则无需过滤Rehab
@@ -69,20 +73,20 @@ function filterDrugLogs(drugLogs, fromTime, toTime) {
     return fromTime < log.timestamp * 1000 && log.timestamp * 1000 < toTime
   })
 
-  // create natural decay logs
+  // create natural recovery logs
   // 2021.4.20 20:00 GMT+8 例行维护后自然消退改为了20
   const patchTime = 1618920000000
-  let naturalDecayTime = nextNaturalDecayTime(fromTime)
-  while (naturalDecayTime < toTime) {
+  let naturalRecoveryTime = nextNaturalRecoveryTime(fromTime)
+  while (naturalRecoveryTime < toTime) {
     filtered.push({
       log: -1,
-      title: NaturalDecayLogTitle,
-      timestamp: naturalDecayTime / 1000,
+      title: NaturalRecoveryLogTitle,
+      timestamp: naturalRecoveryTime / 1000,
       data: {
-        points: naturalDecayTime > patchTime ? 20 : 21
+        points: naturalRecoveryTime > patchTime ? 20 : 21
       }
     })
-    naturalDecayTime += 1000 * 60 * 60 * 24
+    naturalRecoveryTime += 1000 * 60 * 60 * 24
   }
 
   // sort by timestamp
@@ -95,11 +99,11 @@ function createDrugRows(logs, startPoints) {
   let points = startPoints
   return logs.map((log) => {
     let delta
-    if (log.title === NaturalDecayLogTitle) {
+    if (log.title === NaturalRecoveryLogTitle) {
       delta = - Math.min(points, log.data.points)
     } else {
       if (log.title.indexOf('overdose') >= 0) {
-        delta = Math.round(ODAddictionPoints[log.data.item] * 0.5)
+        delta = Math.round(OverdosePoints[log.data.item] * 0.5)
       } else {
         delta = Math.round(AddictionPoints[log.data.item] * 0.5)
       }
@@ -117,22 +121,22 @@ function createDrugRows(logs, startPoints) {
 function createTableRows(rehabLogs, drugLogs) {
   let tableRows = []
   // API默认返回按时间倒序，这里需要按时间顺序遍历
-  for (let i = rehabLogs.length - 1; i > 0 ; i--) {
+  for (let i = rehabLogs.length - 1; i > 0; i--) {
     let previousRehab = rehabLogs[i]
     let currentRehab = rehabLogs[i - 1]
     let fromTime = previousRehab.timestamp * 1000
     let toTime = currentRehab.timestamp * 1000
 
-    // api默认返回100条数据，通常Rehab的间隔大于Drug的间隔，
+    // api默认返回100条数据，通常Rehab的间隔大于Drug的间隔，这里过滤掉早于最后一条Drug日志的Rehab日志，确保两次Rehab日志之间的Drug日志是完整的
     if (previousRehab.timestamp < drugLogs[drugLogs.length - 1].timestamp) {
       continue
     }
 
-    // 时间间隔内drug的log，可能为空
+    // 时间区间内的Drug日志，可能为空
     let filtered = filterDrugLogs(drugLogs, fromTime, toTime)
 
-    let previousCandidates = calcCandidates(previousRehab.data.addiction / 100, previousRehab.data.rehab_times)
-    let currentCandidates = calcCandidates(currentRehab.data.addiction / 100, currentRehab.data.rehab_times)
+    let previousCandidates = calcCandidates(previousRehab.data.addiction, previousRehab.data.rehab_times)
+    let currentCandidates = calcCandidates(currentRehab.data.addiction, currentRehab.data.rehab_times)
     let previous, current, drugRows
     for (let i = 0; i < previousCandidates.length; i++) {
       let testRows, points
@@ -175,7 +179,7 @@ function createTableRows(rehabLogs, drugLogs) {
     })
   }
 
-  // 最近一次Rehab以后的Drug记录
+  // 最后一次Rehab以后的Drug记录
   let fromTime = rehabLogs[0].timestamp * 1000
   let toTime = Date.now()
   let latestDrugLogs = filterDrugLogs(drugLogs, fromTime, toTime)
@@ -185,23 +189,55 @@ function createTableRows(rehabLogs, drugLogs) {
   return tableRows
 }
 
-async function fetchLogs() {
-  let APIKey = localStorage.getItem("APIKey");
-  let rehabLogsUrl = `https://api.torn.com/user/?selections=log&log=6005&key=${APIKey}&comment=TornScripts`
-  let drugLogsUrl = `https://api.torn.com/user/?selections=log&cat=62&key=${APIKey}&comment=TornScripts`
+async function fetchAPI(path, params) {
+  let APIKey = localStorage.getItem("APIKey")
+  if (!APIKey) {
+    throw new Error('APIKey is missing')
+  }
 
-  const rehabLogs = await fetch(rehabLogsUrl).then(response => response.json())
-  const drugLogs = await fetch(drugLogsUrl).then(response => response.json())
-  // const rehabLogs = require("./data/user.log&log=6005.json")
-  // const drugLogs = require(".//data/user.log&cat=62.json")
+  params.key = APIKey
+  params.comment = 'TornScripts'
+  let query = Object.keys(params).map(key => `${key}=${params[key]}`).join('&')
+  let url = `https://api.torn.com/${path}?${query}`
 
-  return { rehabLogs, drugLogs }
+  return await fetch(url)
+    .then((response) => {
+      let statusCode = response.status
+      if (statusCode >= 400 && statusCode < 600) {
+        throw new Error(`Bad response ${statusCode}`);
+      }
+      return response;
+    })
+    .then((response) => response.json())
+    .then(data => {
+      if (data.error) {
+        let { code, error } = data.error;
+        throw new Error(`API error ${code} ${error}`)
+      }
+      return data
+    })
+    .catch((error) => {
+      throw error
+    });
 }
 
 if (window.location.href.indexOf('index.php') >= 0) {
   insertTopButton('drug_history_btn', 'Drug History', () => {
-    fetchLogs().then(data => {
-      let { rehabLogs, drugLogs } = data
+    (async () => {
+      const rehabLogs = await fetchAPI('user', {
+        selections: 'log',
+        log: '6005'
+      }).catch(err => { console.error(err) })
+
+      const drugLogs = await fetchAPI('user', {
+        selections: 'log',
+        cat: '62'
+      }).catch(err => { console.error(err) })
+
+      if (!rehabLogs || !rehabLogs.log || !drugLogs || !drugLogs.log) {
+        return
+      }
+
       let tableRows = createTableRows(Object.values(rehabLogs.log), Object.values(drugLogs.log))
       let cols = [
         { title: '日期', field: 'date' },
@@ -210,7 +246,7 @@ if (window.location.href.indexOf('index.php') >= 0) {
       ];
       let rows = tableRows.map(row => {
         return {
-          date: getDateString(row.timestamp),
+          date: formatDateString(row.timestamp),
           points: `${row.points} (${row.delta > 0 ? '+' : ''}${row.delta})`,
           description: row.description
         }
@@ -218,6 +254,6 @@ if (window.location.href.indexOf('index.php') >= 0) {
       let el = createReportTable(cols, rows, '');
       el.className = 'drug-history';
       overlayContainer(el);
-    })
-  });
+    })()
+  })
 }
