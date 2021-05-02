@@ -118,6 +118,17 @@ function createDrugRows(logs, startPoints) {
   })
 }
 
+function createNullDrugRows(logs) {
+  return logs.map((log) => {
+    return {
+      timestamp: log.timestamp,
+      delta: null,
+      points: null,
+      description: log.title
+    }
+  })
+}
+
 function createTableRows(rehabLogs, drugLogs) {
   let tableRows = []
   // API默认返回按时间倒序，这里需要按时间顺序遍历
@@ -132,58 +143,80 @@ function createTableRows(rehabLogs, drugLogs) {
       continue
     }
 
-    // 时间区间内的Drug日志，可能为空
+    // 两次Rehab之间的Drug日志，可能为空
     let filtered = filterDrugLogs(drugLogs, fromTime, toTime)
 
+    // 计算所有的可行解
     let previousCandidates = calcCandidates(previousRehab.data.addiction, previousRehab.data.rehab_times)
     let currentCandidates = calcCandidates(currentRehab.data.addiction, currentRehab.data.rehab_times)
-    let previous, current, drugRows
+    let solutions = []
     for (let i = 0; i < previousCandidates.length; i++) {
-      let testRows, points
-      if (filtered.length) {
-        testRows = createDrugRows(filtered, previousCandidates[i].remaining)
-        points = testRows[testRows.length - 1].points
+      for (let j = 0; j < currentCandidates.length; j++) {
+        let testRows, points
+        if (filtered.length) {
+          testRows = createDrugRows(filtered, previousCandidates[i].remaining)
+          points = testRows[testRows.length - 1].points
+        } else {
+          testRows = []
+          points = previousCandidates[i].remaining
+        }
+        if (points == currentCandidates[j].original) {
+          solutions.push({
+            previous: previousCandidates[i],
+            current: currentCandidates[j],
+            rows: testRows
+          })
+        }
+      }
+    }
+
+    // 如果可行解有多个，尝试增加约束条件
+    if (solutions.length > 1) {
+      console.debug('ambiguous solutions:', solutions, 'for rehab:', currentRehab)
+      if (tableRows.length > 0 && tableRows[tableRows.length - 1].points !== null) {
+        console.debug('trying to disambiguate')
+        solutions = solutions.filter(solution => {
+          return solution.previous.remaining == tableRows[tableRows.length - 1].points
+        })
       } else {
-        testRows = []
-        points = previousCandidates[i].remaining
+        console.debug('unable to disambiguate')
       }
-      let result = currentCandidates.filter(candidate => {
-        return candidate.original == points
-      })
-      if (result.length == 0) continue
-      if (result.length > 1) {
-        console.debug(`more then 1 results`)
+      if (solutions.length == 1) {
+        console.debug('succeeded to disambiguate')
+      } else {
+        console.debug('failed to disambiguate')
       }
-      previous = previousCandidates[i]
-      current = result[0]
-      drugRows = testRows
-      break
     }
 
-    if (tableRows.length == 0) {
+    if (solutions.length == 1) {
+      tableRows = tableRows.concat(solutions[0].rows)
       tableRows.push({
-        timestamp: previousRehab.timestamp,
-        delta: - previous.loss,
-        points: previous.remaining,
-        description: `Rehab x${previousRehab.data.rehab_times} ${previousRehab.data.addiction}%`
+        timestamp: currentRehab.timestamp,
+        delta: - solutions[0].current.loss,
+        points: solutions[0].current.remaining,
+        description: `Rehab x${currentRehab.data.rehab_times} ${currentRehab.data.addiction}%`
+      })
+    } else {
+      tableRows = tableRows.concat(createNullDrugRows(filtered))
+      tableRows.push({
+        timestamp: currentRehab.timestamp,
+        delta: null,
+        points: null,
+        description: `Rehab x${currentRehab.data.rehab_times} ${currentRehab.data.addiction}%`
       })
     }
-
-    tableRows = tableRows.concat(drugRows)
-
-    tableRows.push({
-      timestamp: currentRehab.timestamp,
-      delta: - current.loss,
-      points: current.remaining,
-      description: `Rehab x${currentRehab.data.rehab_times} ${currentRehab.data.addiction}%`
-    })
   }
 
   // 最后一次Rehab以后的Drug记录
   let fromTime = rehabLogs[0].timestamp * 1000
   let toTime = Date.now()
   let latestDrugLogs = filterDrugLogs(drugLogs, fromTime, toTime)
-  let latestDrugRows = createDrugRows(latestDrugLogs, tableRows[tableRows.length - 1].points)
+  let latestDrugRows
+  if (tableRows[tableRows.length - 1].points != null) {
+    latestDrugRows = createDrugRows(latestDrugLogs, tableRows[tableRows.length - 1].points)
+  } else {
+    latestDrugRows = createNullDrugRows(latestDrugLogs)
+  }
   tableRows = tableRows.concat(latestDrugRows)
 
   return tableRows
