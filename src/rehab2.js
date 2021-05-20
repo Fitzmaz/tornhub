@@ -176,7 +176,7 @@ function createTableRows(rehabLogs, drugLogs) {
       if (tableRows.length > 0 && tableRows[tableRows.length - 1].points !== null) {
         console.debug('trying to disambiguate')
         solutions = solutions.filter(solution => {
-          return solution.previous.remaining == tableRows[tableRows.length - 1].points
+          return solution.previous.remaining == tableRows[tableRows.length - 1].points && solution.previous.loss == - tableRows[tableRows.length - 1].delta
         })
       } else {
         console.debug('unable to disambiguate')
