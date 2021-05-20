@@ -267,6 +267,9 @@ if (window.location.href.indexOf('index.php') >= 0) {
         cat: '62'
       }).catch(err => { console.error(err) })
 
+      // const rehabLogs = require('./data/user.log&log=6005.json')
+      // const drugLogs = require('./data/user.log&cat=62.json')
+
       if (!rehabLogs || !rehabLogs.log || !drugLogs || !drugLogs.log) {
         return
       }
