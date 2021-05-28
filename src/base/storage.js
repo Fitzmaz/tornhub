@@ -22,4 +22,13 @@ const Keys = {
   RacingPointsCache: "racingPointsCacheKey",
 }
 
-module.exports = { get, set, remove, Keys };
+module.exports = {
+  get, set, remove, Keys, export: function () {
+    let data = {};
+    for (const keyName in Keys) {
+      const rawKey = Keys[keyName];
+      data[keyName] = get(rawKey);
+    }
+    return data;
+  }
+};
