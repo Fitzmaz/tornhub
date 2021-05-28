@@ -54,23 +54,22 @@ function getTCTDate(now) {
   return `${year}-${zeroPadding(month, 2)}-${zeroPadding(day, 2)}`;
 }
 
-const StorageKeyCityFinds = "StorageKeyCityFinds";
 function recordItems(newItems) {
   let now = new Date();
   let date = getTCTDate(now);
-  let cityFinds = storage.get(StorageKeyCityFinds) || {};
+  let cityFinds = storage.get(storage.Keys.CityFinds) || {};
   let data = cityFinds[date];
   if (typeof data !== 'undefined') {
     // 今日数据已记录
     return;
   }
   cityFinds[date] = { items: newItems, time: now.getTime() };
-  storage.set(StorageKeyCityFinds, cityFinds);
+  storage.set(storage.Keys.CityFinds, cityFinds);
 }
 function loadTableDataAsync() {
   getItemList().then(itemList => {
     let rows = [];
-    let cityFinds = storage.get(StorageKeyCityFinds) || {};
+    let cityFinds = storage.get(storage.Keys.CityFinds) || {};
     for (const key in cityFinds) {
       let { items, time } = cityFinds[key];
       let date = new Date(time).toLocaleString([], { hour12: false });

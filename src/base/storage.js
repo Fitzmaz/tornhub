@@ -14,4 +14,12 @@ function remove(key) {
   return localStorage.removeItem(key);
 }
 
-module.exports = { get, set, remove };
+const Keys = {
+  CityFinds: "StorageKeyCityFinds",
+  RacingRecords: "racingRecordsKey",
+  RacingRecordsIndex: "racingRecordsIndexKey",
+  RacingRecordsQueryDate: "racingRecordsQueryDateKey",
+  RacingPointsCache: "racingPointsCacheKey",
+}
+
+module.exports = { get, set, remove, Keys };

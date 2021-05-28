@@ -23,14 +23,10 @@ function decodeBase64(data) {
   return null;
 }
 
-const racingRecordsKey = 'racingRecordsKey';
-const racingRecordsIndexKey = 'racingRecordsIndexKey';
-const racingRecordsQueryDateKey = 'racingRecordsQueryDateKey';
-
 function updateRacingRecords(currentSkillLevel) {
-  let racingRecords = storage.get(racingRecordsKey) || [];
-  let racingRecordsIndex = storage.get(racingRecordsIndexKey) || {};
-  let racingRecordsQueryDate = storage.get(racingRecordsQueryDateKey);
+  let racingRecords = storage.get(storage.Keys.RacingRecords) || [];
+  let racingRecordsIndex = storage.get(storage.Keys.RacingRecordsIndex) || {};
+  let racingRecordsQueryDate = storage.get(storage.Keys.RacingRecordsQueryDate);
   // 当前skillLevel已被记录
   let latestRecord = racingRecords[racingRecords.length - 1];
   if (latestRecord && latestRecord.skillLevel === currentSkillLevel) {
@@ -70,16 +66,16 @@ function updateRacingRecords(currentSkillLevel) {
     // 记录当前skillLevel
     racingRecords[racingRecords.length - 1].skillLevel = currentSkillLevel;
     // 存储更新后的racingRecords和racingRecordsIndex
-    storage.set(racingRecordsKey, racingRecords);
-    storage.set(racingRecordsIndexKey, racingRecordsIndex);
-    storage.set(racingRecordsQueryDateKey, now);
+    storage.set(storage.Keys.RacingRecords, racingRecords);
+    storage.set(storage.Keys.RacingRecordsIndex, racingRecordsIndex);
+    storage.set(storage.Keys.RacingRecordsQueryDate, now);
   });
 }
 
 function resetRacingRecords() {
-  storage.remove(racingRecordsKey);
-  storage.remove(racingRecordsIndexKey);
-  storage.remove(racingRecordsQueryDateKey);
+  storage.remove(storage.Keys.RacingRecords);
+  storage.remove(storage.Keys.RacingRecordsIndex);
+  storage.remove(storage.Keys.RacingRecordsQueryDate);
 }
 
 function ui_showPreciseSkill(level) {
@@ -131,7 +127,7 @@ function ui_addRacingReportButton() {
 }
 
 function showTable(className) {
-  let racingRecords = storage.get(racingRecordsKey);
+  let racingRecords = storage.get(storage.Keys.RacingRecords);
   let cols = [
     {
       title: 'RaceID',
@@ -205,8 +201,7 @@ function parseRacingData(data) {
 }
 
 async function getRacingPoints(userID) {
-  const racingPointsCacheKey = 'racingPointsCacheKey';
-  const racingPointsCache = storage.get(racingPointsCacheKey) || {};
+  const racingPointsCache = storage.get(storage.Keys.RacingPointsCache) || {};
   const racingPointsInfo = racingPointsCache[userID];
   if (racingPointsInfo && Date.now() - racingPointsInfo.timestamp < 1000 * 60 * 60 * 24) {
     return racingPointsInfo.points;
@@ -219,7 +214,7 @@ async function getRacingPoints(userID) {
       points: racingpointsearned,
       timestamp: Date.now()
     };
-    storage.set(racingPointsCacheKey, racingPointsCache);
+    storage.set(storage.Keys.RacingPointsCache, racingPointsCache);
     return racingpointsearned;
   }
 }
