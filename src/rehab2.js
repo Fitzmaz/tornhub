@@ -47,6 +47,14 @@ function compareTimestamp(a, b) {
   return 0
 }
 
+class Rehab {
+  constructor(original, loss, remaining) {
+    this.original = original
+    this.loss = loss
+    this.remaining = remaining
+  }
+}
+
 // 根据解毒百分比和解毒次数计算所有可行解
 function calcCandidates(addiction, rehabTimes) {
   const MinPoints = 1
@@ -57,7 +65,7 @@ function calcCandidates(addiction, rehabTimes) {
     let l = Math.floor(i / (rehabPercentage - 0.00005))
     let r = Math.ceil(i / (rehabPercentage + 0.00005))
     if (l == r) {
-      candidates.push({ original: l, loss: i, remaining: l - i })
+      candidates.push(new Rehab(l, i, l - i))
     }
   }
   return candidates
@@ -147,7 +155,13 @@ function createTableRows(rehabLogs, drugLogs) {
     let filtered = filterDrugLogs(drugLogs, fromTime, toTime)
 
     // 计算所有的可行解
-    let previousCandidates = calcCandidates(previousRehab.data.addiction, previousRehab.data.rehab_times)
+    let previousCandidates
+    if (previousRehab.data.addiction === 100) {
+      // previousRehab为100%全解，此时有无数个解，但计算只需要用到remaining
+      previousCandidates = [new Rehab(null, null, 0)]
+    } else {
+      previousCandidates = calcCandidates(previousRehab.data.addiction, previousRehab.data.rehab_times)
+    }
     let currentCandidates = calcCandidates(currentRehab.data.addiction, currentRehab.data.rehab_times)
     let solutions = []
     for (let i = 0; i < previousCandidates.length; i++) {
