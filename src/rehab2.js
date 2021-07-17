@@ -16,14 +16,14 @@ const AddictionPoints = {
 
 const OverdosePoints = {
   196: 0, // Cannabis
-  197: 0, // Ecstasy
+  197: 20, // Ecstasy
   198: 50, // Ketamine
-  199: 0, // LSD
+  199: 50, // LSD
   200: 0, // Opium
-  201: 0, // PCP
+  201: 50, // PCP
   203: 50, // Shrooms
-  204: 0, // Speed
-  205: 0, // Vicodin
+  204: 50, // Speed
+  205: 50, // Vicodin
   206: 100, // Xanax
 }
 
@@ -44,6 +44,13 @@ function formatDateString(timestamp) {
 function compareTimestamp(a, b) {
   if (a.timestamp < b.timestamp) return -1
   if (a.timestamp > b.timestamp) return 1
+  return 0
+}
+
+// 按timestamp降序排序的compare function
+function compareTimestampDesc(a, b) {
+  if (a.timestamp < b.timestamp) return 1
+  if (a.timestamp > b.timestamp) return -1
   return 0
 }
 
@@ -186,19 +193,19 @@ function createTableRows(rehabLogs, drugLogs) {
 
     // 如果可行解有多个，尝试增加约束条件
     if (solutions.length > 1) {
-      console.debug('ambiguous solutions:', solutions, 'for rehab:', currentRehab)
+      console.log('ambiguous solutions:', solutions, 'for rehab:', currentRehab)
       if (tableRows.length > 0 && tableRows[tableRows.length - 1].points !== null) {
-        console.debug('trying to disambiguate')
+        console.log('trying to disambiguate')
         solutions = solutions.filter(solution => {
           return solution.previous.remaining == tableRows[tableRows.length - 1].points && solution.previous.loss == - tableRows[tableRows.length - 1].delta
         })
       } else {
-        console.debug('unable to disambiguate')
+        console.log('unable to disambiguate')
       }
       if (solutions.length == 1) {
-        console.debug('succeeded to disambiguate')
+        console.log('succeeded to disambiguate')
       } else {
-        console.debug('failed to disambiguate')
+        console.log('failed to disambiguate')
       }
     }
 
@@ -271,24 +278,25 @@ async function fetchAPI(path, params) {
 if (window.location.href.indexOf('index.php') >= 0) {
   insertTopButton('drug_history_btn', 'Drug History', () => {
     (async () => {
-      const rehabLogs = await fetchAPI('user', {
+      const drugs = await fetchAPI('user', {
         selections: 'log',
-        log: '6005'
+        cat: '61'
       }).catch(err => { console.error(err) })
 
-      const drugLogs = await fetchAPI('user', {
-        selections: 'log',
-        cat: '62'
-      }).catch(err => { console.error(err) })
-
-      // const rehabLogs = require('./data/user.log&log=6005.json')
-      // const drugLogs = require('./data/user.log&cat=62.json')
-
-      if (!rehabLogs || !rehabLogs.log || !drugLogs || !drugLogs.log) {
+      if (!drugs || !drugs.log) {
         return
       }
 
-      let tableRows = createTableRows(Object.values(rehabLogs.log), Object.values(drugLogs.log))
+      const logs = Object.values(drugs.log).sort(compareTimestampDesc)
+
+      // const drugs = require('./data/drug_log_2587304.json')
+      // const logs = drugs.drug
+
+      const LogTypeRehab = 6005
+      const rehabLogs = logs.filter(record => record.log === LogTypeRehab)
+      const drugLogs = logs.filter(record => record.log !== LogTypeRehab)
+
+      let tableRows = createTableRows(rehabLogs, Object.values(drugLogs))
       let cols = [
         { title: '日期', field: 'date' },
         { title: "药瘾", field: 'points' },
