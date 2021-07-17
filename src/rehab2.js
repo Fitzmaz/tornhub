@@ -21,7 +21,7 @@ const OverdosePoints = {
   199: 0, // LSD
   200: 0, // Opium
   201: 0, // PCP
-  203: 0, // Shrooms
+  203: 50, // Shrooms
   204: 0, // Speed
   205: 0, // Vicodin
   206: 100, // Xanax
